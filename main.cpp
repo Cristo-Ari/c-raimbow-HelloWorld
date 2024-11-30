@@ -1,53 +1,61 @@
 #include <iostream>
 #include <string>
-#include <cstdlib>
-#include <ctime>
+#include <random>
 #include <thread>
 #include <vector>
 #include <windows.h>
 
 using namespace std;
 
-void SetConsoleColor(int color) {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
-}
-
-void SetConsoleCursorPosition(int x, int y) {
-    COORD coord = { x, y };
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
-
-int GetRandomColor() {
-    return rand() % 15 + 1;
-}
-
-int main() {
-    string text = "Hello World!";
-    int centerX = 40;
-    int centerY = 12;
-
-    srand(time(0));
-
+class ConsoleText {
+public:
+    string text;
+    int centerX;
+    int centerY;
     vector<pair<int, int>> letterPositions;
     vector<int> letterColors;
 
-    for (size_t i = 0; i < text.length(); i++) {
-        int offsetY = rand() % 7 + 1;
-        letterPositions.push_back({ centerX + i, centerY - offsetY });
-        letterColors.push_back(GetRandomColor());
+    ConsoleText(string txt, int cx, int cy)
+        : text(txt), centerX(cx), centerY(cy) {
+        srand(static_cast<unsigned int>(time(0)));
+        initialize();
     }
 
-    for (int i = 0; i < 20; i++) {
-        system("cls");
+    void SetConsoleColor(int color) {
+        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+    }
 
+    void SetConsoleCursorPosition(int x, int y) {
+        COORD coord = { static_cast<SHORT>(x), static_cast<SHORT>(y) };
+        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        ::SetConsoleCursorPosition(hConsole, coord);
+    }
+
+    int GetRandomColor() {
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_int_distribution<int> dis(1, 15);
+        return dis(gen);
+    }
+
+    void initialize() {
+        for (size_t i = 0; i < text.length(); i++) {
+            int offsetY = rand() % 7 + 1;
+            letterPositions.push_back({ centerX + static_cast<int>(i), centerY - offsetY });
+            letterColors.push_back(GetRandomColor());
+        }
+    }
+
+    void render() {
+        system("cls");
         for (size_t j = 0; j < text.length(); j++) {
             SetConsoleColor(letterColors[j]);
             SetConsoleCursorPosition(letterPositions[j].first, letterPositions[j].second);
             cout << text[j];
         }
+    }
 
-        this_thread::sleep_for(chrono::milliseconds(1000));
-
+    void updatePositions() {
         for (size_t j = 0; j < text.length(); j++) {
             if (letterPositions[j].second < centerY) {
                 letterPositions[j].second++;
@@ -58,14 +66,28 @@ int main() {
         }
     }
 
-    system("cls");
-    for (size_t j = 0; j < text.length(); j++) {
-        SetConsoleColor(letterColors[j]);
-        SetConsoleCursorPosition(centerX + j, centerY);
-        cout << text[j];
+    void displayFinal() {
+        system("cls");
+        for (size_t j = 0; j < text.length(); j++) {
+            SetConsoleColor(letterColors[j]);
+            SetConsoleCursorPosition(centerX + static_cast<int>(j), centerY);
+            cout << text[j];
+        }
+        SetConsoleColor(7);
+    }
+};
+
+int main() {
+    ConsoleText text("Hello World!", 40, 12);
+
+    for (int i = 0; i < 20; i++) {
+        text.render();
+        this_thread::sleep_for(chrono::milliseconds(100));
+
+        text.updatePositions();
     }
 
-    SetConsoleColor(7);
+    text.displayFinal();
 
     return 0;
 }
